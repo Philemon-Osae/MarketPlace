@@ -30,7 +30,7 @@ const CATS = Object.keys(CAT);
 const SELLER = 'Accra Trade Hub';
 const D_DEL = 'Accra 1–2 days · Other regions 3–5 days';
 const D_WARR = '7-day return if the item is not as described';
-const KEY = 'markethub:v1';
+const KEY = 'marketPlace:v1';
 const REGIONS = {'Greater Accra': 20, 'Ashanti': 35, 'Central': 35, 'Eastern': 30, 'Western': 40, 'Western North': 45, 'Volta': 45, 'Oti': 50, 'Bono': 45, 'Bono East': 50, 'Ahafo': 50, 'Northern': 60, 'Savannah': 60, 'North East': 65, 'Upper East': 65, 'Upper West': 65};
 const FREE_ACCRA = 500;
 const feeFor = (region, sub) => (region === 'Greater Accra' && sub >= FREE_ACCRA) ? 0 : (REGIONS[region] != null ? REGIONS[region] : 55);
@@ -138,7 +138,7 @@ function header() {
   const cnt = S.cart.reduce((a, c) => a + c.qty, 0);
   const isC = S.role === 'customer';
   return `<header class="top"><div class="bar">
-    <button class="brand" data-action="home" aria-label="MarketHub home">${LOGO}<span>MarketHub</span></button>
+    <button class="brand" data-action="home" aria-label="MarketPlace home">${LOGO}<span>MarketPlace</span></button>
     <div class="actions">
       ${S.role ? `<div class="seg" role="group" aria-label="Switch between shopping and selling">
         <button data-action="role" data-id="customer" aria-pressed="${isC}">Shop</button>
@@ -149,7 +149,7 @@ function header() {
 
 function gate() {
   return `<main class="gate">
-    <h1>How do you want to use MarketHub?</h1>
+    <h1>How do you want to use MarketPlace?</h1>
     <p class="sub">Buy and sell across Ghana. You can switch any time.</p>
     <div class="choices">
       <button class="choice buy" data-action="role" data-id="customer"><strong>Customer</strong><span>Shop phones, fashion, home items and more</span></button>
@@ -218,7 +218,7 @@ function home() {
 function shareLink(p) {
   let url = '';
   try { url = location.href; } catch (e) {}
-  const text = `${p.name} for ${money(baseOf(p))} on MarketHub ${url}`.trim();
+  const text = `${p.name} for ${money(baseOf(p))} on MarketPlace ${url}`.trim();
   return 'https://wa.me/?text=' + encodeURIComponent(text);
 }
 function detail() {
@@ -237,7 +237,7 @@ function detail() {
       <dl class="facts">
         <div><dt>Warranty</dt><dd>${esc(p.warranty || D_WARR)}</dd></div>
         <div><dt>Delivery</dt><dd>${esc(p.delivery || D_DEL)}. Free in Greater Accra on orders over ${money(FREE_ACCRA)}.</dd></div>
-        <div><dt>Protection</dt><dd>Pay by MoMo or card and MarketHub holds your money until you confirm delivery.</dd></div>
+        <div><dt>Protection</dt><dd>Pay by MoMo or card and MarketPlace holds your money until you confirm delivery.</dd></div>
         <div><dt>Sold by</dt><dd>${SELLER}<span class="ver">Verified</span></dd></div>
       </dl>
       <div class="stack">
