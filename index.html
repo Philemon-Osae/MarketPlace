@@ -1,23 +1,26 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>MarketPlace</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MarketPlace</title>
+<link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%20%22MarketPlace%22%2C%20%22short_name%22%3A%20%22MarketPlace%22%2C%20%22description%22%3A%20%22Buy%20and%20sell%20across%20Ghana%20with%20MoMo%2C%20card%20and%20cash%20on%20delivery.%22%2C%20%22start_url%22%3A%20%22.%22%2C%20%22scope%22%3A%20%22.%22%2C%20%22display%22%3A%20%22standalone%22%2C%20%22background_color%22%3A%20%22%23F3F5EF%22%2C%20%22theme_color%22%3A%20%22%2314231B%22%2C%20%22icons%22%3A%20%5B%7B%22src%22%3A%20%22data%3Aimage/svg%2Bxml%2C%253Csvg%2520xmlns%253D%2522http%253A//www.w3.org/2000/svg%2522%2520viewBox%253D%25220%25200%2520100%2520100%2522%253E%253Crect%2520width%253D%2522100%2522%2520height%253D%2522100%2522%2520rx%253D%252220%2522%2520fill%253D%2522%252314231B%2522/%253E%253Crect%2520x%253D%25226%2522%2520y%253D%252228%2522%2520width%253D%252288%2522%2520height%253D%252211%2522%2520fill%253D%2522%2523F0B429%2522/%253E%253Crect%2520x%253D%25226%2522%2520y%253D%252228%2522%2520width%253D%252220%2522%2520height%253D%252211%2522%2520fill%253D%2522%2523C1272D%2522/%253E%253Crect%2520x%253D%252274%2522%2520y%253D%252228%2522%2520width%253D%252220%2522%2520height%253D%252211%2522%2520fill%253D%2522%2523C1272D%2522/%253E%253Crect%2520x%253D%252210%2522%2520y%253D%252250%2522%2520width%253D%252280%2522%2520height%253D%252234%2522%2520fill%253D%2522none%2522%2520stroke%253D%2522%2523F3F5EF%2522%2520stroke-width%253D%25224%2522/%253E%253Crect%2520x%253D%252238%2522%2520y%253D%252260%2522%2520width%253D%252224%2522%2520height%253D%252224%2522%2520fill%253D%2522%2523F3F5EF%2522/%253E%253C/svg%253E%22%2C%20%22sizes%22%3A%20%22any%22%2C%20%22type%22%3A%20%22image/svg%2Bxml%22%2C%20%22purpose%22%3A%20%22any%20maskable%22%7D%5D%7D">
+<meta name="theme-color" content="#14231B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MarketPlace">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2220%22%20fill%3D%22%2314231B%22/%3E%3Crect%20x%3D%226%22%20y%3D%2228%22%20width%3D%2288%22%20height%3D%2211%22%20fill%3D%22%23F0B429%22/%3E%3Crect%20x%3D%226%22%20y%3D%2228%22%20width%3D%2220%22%20height%3D%2211%22%20fill%3D%22%23C1272D%22/%3E%3Crect%20x%3D%2274%22%20y%3D%2228%22%20width%3D%2220%22%20height%3D%2211%22%20fill%3D%22%23C1272D%22/%3E%3Crect%20x%3D%2210%22%20y%3D%2250%22%20width%3D%2280%22%20height%3D%2234%22%20fill%3D%22none%22%20stroke%3D%22%23F3F5EF%22%20stroke-width%3D%224%22/%3E%3Crect%20x%3D%2238%22%20y%3D%2260%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23F3F5EF%22/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Crect%20width%3D%22100%22%20height%3D%22100%22%20rx%3D%2220%22%20fill%3D%22%2314231B%22/%3E%3Crect%20x%3D%226%22%20y%3D%2228%22%20width%3D%2288%22%20height%3D%2211%22%20fill%3D%22%23F0B429%22/%3E%3Crect%20x%3D%226%22%20y%3D%2228%22%20width%3D%2220%22%20height%3D%2211%22%20fill%3D%22%23C1272D%22/%3E%3Crect%20x%3D%2274%22%20y%3D%2228%22%20width%3D%2220%22%20height%3D%2211%22%20fill%3D%22%23C1272D%22/%3E%3Crect%20x%3D%2210%22%20y%3D%2250%22%20width%3D%2280%22%20height%3D%2234%22%20fill%3D%22none%22%20stroke%3D%22%23F3F5EF%22%20stroke-width%3D%224%22/%3E%3Crect%20x%3D%2238%22%20y%3D%2260%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23F3F5EF%22/%3E%3C/svg%3E" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <div id="app"></div>
-    <div id="toast" role="status" aria-live="polite"></div>
+<div id="app"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
-
 </html>
