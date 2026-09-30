@@ -38,9 +38,14 @@ h2{font:700 20px/1.2 var(--display);letter-spacing:-.01em}
 .seg{display:flex;background:rgba(255,255,255,.12);border-radius:999px;padding:3px}
 .seg button{border:0;background:none;color:#F3F5EF;padding:0 14px;border-radius:999px;font:600 14px var(--body);min-height:36px}
 .seg button[aria-pressed=true]{background:var(--gold);color:#14231B}
+.who{background:rgba(255,255,255,.12);border:0;color:#F3F5EF;border-radius:999px;padding:0 14px;min-height:36px;font:600 13px var(--body);white-space:nowrap}
 .cartbtn{position:relative;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.12);border:0;color:#F3F5EF;display:grid;place-items:center}
 .cartbtn b{position:absolute;top:1px;right:1px;min-width:18px;height:18px;border-radius:9px;background:var(--gold);color:#14231B;font:700 11px/18px var(--body);text-align:center;padding:0 4px}
 .kente{height:8px;background:repeating-linear-gradient(90deg,#F0B429 0 18px,#14231B 18px 24px,#C1272D 24px 42px,#14231B 42px 48px,#1F7A4D 48px 66px,#14231B 66px 72px)}
+.instbar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--gold);color:#14231B;padding:10px 16px;font:600 14px var(--body)}
+.instbar span{min-width:0}
+.instbtns{display:flex;align-items:center;gap:4px;flex:none}
+.instbtns .x{color:#14231B}
 
 .wrap{max-width:1100px;margin:0 auto;padding:22px 16px 56px}
 
