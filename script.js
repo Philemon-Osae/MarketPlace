@@ -30,7 +30,7 @@ const CATS = Object.keys(CAT);
 const SELLER = 'Accra Trade Hub';
 const D_DEL = 'Accra 1–2 days · Other regions 3–5 days';
 const D_WARR = '7-day return if the item is not as described';
-const KEY = 'marketPlace:v1';
+const KEY = 'markethub:v1';
 const REGIONS = {'Greater Accra': 20, 'Ashanti': 35, 'Central': 35, 'Eastern': 30, 'Western': 40, 'Western North': 45, 'Volta': 45, 'Oti': 50, 'Bono': 45, 'Bono East': 50, 'Ahafo': 50, 'Northern': 60, 'Savannah': 60, 'North East': 65, 'Upper East': 65, 'Upper West': 65};
 const FREE_ACCRA = 500;
 const feeFor = (region, sub) => (region === 'Greater Accra' && sub >= FREE_ACCRA) ? 0 : (REGIONS[region] != null ? REGIONS[region] : 55);
@@ -50,7 +50,7 @@ function seed() {
   ];
   const day = 864e5, now = Date.now();
   return {
-    role: null,
+    role: null, accounts: [], userId: null,
     products: rows.map((r, i) => ({id: 'p' + (i + 1), name: r[0], price: r[1], cat: r[2], emoji: r[3], desc: r[4], warranty: r[5], delivery: D_DEL, img: null, stock: r[6], sale: r[7] || 0})),
     cart: [], orders: [], chats: {}, unreadS: {}, unreadC: {}, deals: {}, wish: [],
     reviews: [
@@ -66,6 +66,7 @@ function seed() {
 function norm(d) {
   d.deals = d.deals || {}; d.wish = d.wish || []; d.reviews = d.reviews || []; d.chats = d.chats || {};
   d.unreadS = d.unreadS || {}; d.unreadC = d.unreadC || {}; d.cart = d.cart || []; d.orders = d.orders || [];
+  d.accounts = d.accounts || []; if (d.userId === undefined) d.userId = null;
   const sd = seed().products;
   d.products.forEach(p => {
     const s = sd.find(x => x.id === p.id);
@@ -88,7 +89,9 @@ function save() {
 }
 let S = norm(load() || seed());
 const blankCo = () => ({name: '', phone: '', addr: '', region: 'Greater Accra', method: 'momo', net: 'MTN', momo: '', card: '', exp: '', cvv: ''});
-const V = {screen: 'home', pid: null, tab: 'products', q: '', cat: 'All', sort: 'new', sheet: null, chat: null, confirmDel: null, newImg: null, buy: null, co: blankCo(), err: '', busy: false, step: '', last: null, rv: null, offerPid: null};
+const V = {screen: 'home', pid: null, tab: 'products', q: '', cat: 'All', sort: 'new', sheet: null, chat: null, confirmDel: null, newImg: null, buy: null, co: blankCo(), err: '', busy: false, step: '', last: null, rv: null, offerPid: null, auth: {mode: 'signin', name: '', phone: '', password: '', confirm: ''}, authErr: '', installDismissed: false};
+const accName = () => { const a = S.accounts.find(x => x.id === S.userId); return a ? a.name : ''; };
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 /* ---------- pricing + product helpers ---------- */
 const byId = id => S.products.find(p => p.id === id);
@@ -138,18 +141,38 @@ function header() {
   const cnt = S.cart.reduce((a, c) => a + c.qty, 0);
   const isC = S.role === 'customer';
   return `<header class="top"><div class="bar">
-    <button class="brand" data-action="home" aria-label="MarketPlace home">${LOGO}<span>MarketPlace</span></button>
+    <button class="brand" data-action="home" aria-label="MarketHub home">${LOGO}<span>MarketHub</span></button>
     <div class="actions">
       ${S.role ? `<div class="seg" role="group" aria-label="Switch between shopping and selling">
         <button data-action="role" data-id="customer" aria-pressed="${isC}">Shop</button>
         <button data-action="role" data-id="seller" aria-pressed="${!isC}">Sell</button></div>` : ''}
       ${isC ? `<button class="cartbtn" data-action="cart" aria-label="Open cart, ${cnt} item${cnt === 1 ? '' : 's'}">${ICON.bag}${cnt ? `<b>${cnt}</b>` : ''}</button>` : ''}
+      ${S.userId ? `<button class="who" data-action="logout" aria-label="Log out of ${esc(accName())}'s account">Log out</button>` : ''}
     </div></div><div class="kente"></div></header>`;
 }
 
+function authView() {
+  const a = V.auth, isUp = a.mode === 'signup';
+  return `<main class="gate">
+    <h1>${isUp ? 'Create your account' : 'Welcome to MarketHub'}</h1>
+    <p class="sub">${isUp ? 'Sign up to shop or sell across Ghana.' : 'Sign in to shop or sell across Ghana.'}</p>
+    <div class="chips" style="margin:18px 0 2px">
+      <button class="chip" data-action="authmode" data-id="signin" aria-pressed="${!isUp}">Sign in</button>
+      <button class="chip" data-action="authmode" data-id="signup" aria-pressed="${isUp}">Sign up</button>
+    </div>
+    <form data-form="auth" novalidate style="margin-top:16px">
+      ${isUp ? `<div class="field"><label for="an">Full name</label><input id="an" data-auth="name" autocomplete="name" value="${esc(a.name)}"></div>` : ''}
+      <div class="field"><label for="ap">Phone number</label><input id="ap" data-auth="phone" inputmode="tel" autocomplete="tel" placeholder="0244 123 456" value="${esc(a.phone)}"></div>
+      <div class="field"><label for="aw">Password</label><input id="aw" type="password" data-auth="password" autocomplete="${isUp ? 'new-password' : 'current-password'}" value="${esc(a.password)}"></div>
+      ${isUp ? `<div class="field"><label for="ac">Confirm password</label><input id="ac" type="password" data-auth="confirm" autocomplete="new-password" value="${esc(a.confirm)}"></div>` : ''}
+      <p class="err" role="alert">${esc(V.authErr)}</p>
+      <button class="btn primary block" type="submit">${isUp ? 'Create account' : 'Sign in'}</button>
+      <p class="note">Test mode. Your account stays on this device only.</p>
+    </form></main>`;
+}
 function gate() {
   return `<main class="gate">
-    <h1>How do you want to use MarketPlace?</h1>
+    <h1>How do you want to use MarketHub?</h1>
     <p class="sub">Buy and sell across Ghana. You can switch any time.</p>
     <div class="choices">
       <button class="choice buy" data-action="role" data-id="customer"><strong>Customer</strong><span>Shop phones, fashion, home items and more</span></button>
@@ -218,7 +241,7 @@ function home() {
 function shareLink(p) {
   let url = '';
   try { url = location.href; } catch (e) {}
-  const text = `${p.name} for ${money(baseOf(p))} on MarketPlace ${url}`.trim();
+  const text = `${p.name} for ${money(baseOf(p))} on MarketHub ${url}`.trim();
   return 'https://wa.me/?text=' + encodeURIComponent(text);
 }
 function detail() {
@@ -237,7 +260,7 @@ function detail() {
       <dl class="facts">
         <div><dt>Warranty</dt><dd>${esc(p.warranty || D_WARR)}</dd></div>
         <div><dt>Delivery</dt><dd>${esc(p.delivery || D_DEL)}. Free in Greater Accra on orders over ${money(FREE_ACCRA)}.</dd></div>
-        <div><dt>Protection</dt><dd>Pay by MoMo or card and MarketPlace holds your money until you confirm delivery.</dd></div>
+        <div><dt>Protection</dt><dd>Pay by MoMo or card and MarketHub holds your money until you confirm delivery.</dd></div>
         <div><dt>Sold by</dt><dd>${SELLER}<span class="ver">Verified</span></dd></div>
       </dl>
       <div class="stack">
@@ -267,7 +290,6 @@ function threadList(role) {
       <div style="text-align:right"><time>${timeOf(last.t)}</time>${u ? `<div><span class="badge">${u}</span></div>` : ''}</div></button>`;
   }).join('');
 }
-
 function inbox() {
   return `<main class="wrap"><button class="back" data-action="home">${ICON.back} All products</button>
     <h1>Messages</h1><div style="margin-top:16px">${threadList('customer')}</div></main>`;
@@ -284,241 +306,100 @@ function ordersView() {
     return `<li class="order"><div class="top-row"><strong class="ref">${o.id}</strong><strong>${money(o.total)}</strong></div>
       <p>${o.items.map(i => `${i.qty} × ${esc(i.name)}`).join(', ')}</p>
       <p>${dateOf(o.t)} · ${esc(o.method)} · ${o.fee ? `delivery ${money(o.fee)}` : 'free delivery'}${o.region ? ' to ' + esc(o.region) : ''}</p>
-      <div class="steps">${steps.map((step, i) => `<span class="step${i <= idx ? ' active' : ''}">${step}</span>`).join('')}</div>
-      ${held ? '<p class="sub">Payment held until delivery.</p>' : ''}
-      ${rate ? `<div class="actions">${rate}</div>` : ''}</li>`;
+      <ol class="track" aria-label="Order progress">${steps.map((s, i) => `<li class="${i <= idx ? 'done' : ''}">${s}</li>`).join('')}</ol>
+      ${held ? `<div class="protect">${ICON.shield}<span>Your money is held safely. It goes to the seller only after you confirm delivery.</span></div>` : ''}
+      <div class="obtns">${o.status === 'shipped' ? `<button class="btn sm primary" data-action="confirm" data-id="${o.id}">Confirm delivery</button>` : ''}${rate}
+        <button class="btn sm ghost" data-action="chat" data-id="${o.items[0].id}">${ICON.chat} Chat with seller</button></div></li>`;
   }).join('');
   return `<main class="wrap"><button class="back" data-action="home">${ICON.back} All products</button>
-    <h1>Orders</h1>${rows ? `<ul class="orders">${rows}</ul>` : '<div class="empty">No orders yet.</div>'}</main>`;
+    <h1>Your orders</h1><div style="margin-top:12px">${list.length ? `<ul>${rows}</ul>` : `<div class="empty"><strong>No orders yet</strong>Orders you place show up here with live progress.</div>`}</div></main>`;
 }
+
 /* seller */
 const earnedTotal = () => S.orders.filter(o => o.delivered).reduce((a, o) => a + earn(o), 0);
 function seller() {
-  const unread = sumObj(S.unreadS), toShip 
-= S.orders.filter(o => o.status === 
-'placed').length;
-  const tabs = [['products', 'Products'], 
-['sales', 'Sales'], ['messages', 
-'Messages'], ['reports', 'Reports']];
-  const badge = {messages: unread, sales: 
-toShip};
-  const body = V.tab === 'products' ? 
-sellerProducts() : V.tab === 'sales' ? 
-sellerSales() : V.tab === 'messages' ? 
-`<div>${threadList('seller')}</div>` : 
-reports();
+  const unread = sumObj(S.unreadS), toShip = S.orders.filter(o => o.status === 'placed').length;
+  const tabs = [['products', 'Products'], ['sales', 'Sales'], ['messages', 'Messages'], ['reports', 'Reports']];
+  const badge = {messages: unread, sales: toShip};
+  const body = V.tab === 'products' ? sellerProducts() : V.tab === 'sales' ? sellerSales() : V.tab === 'messages' ? `<div>${threadList('seller')}</div>` : reports();
   return `<main class="wrap">
     <h1>Welcome back, Seller!</h1>
-    <p class="sub">Seller Center: turn your 
-products into income.</p>
-    <dl class="stats"><div>
-<dt>Products</dt><dd>${S.products.length}
-</dd></div>
-      <div><dt>Paid out</dt>
-<dd>${money(earnedTotal())}</dd></div>
-      <div><dt>New messages</dt>
-<dd>${unread}</dd></div></dl>
-    <nav class="tabs" 
-role="tablist">${tabs.map(([k, l]) => 
-`<button role="tab" aria-selected="${V.tab 
-=== k}" data-action="tab" data
-id="${k}">${l}${badge[k] ? `<b>${badge[k]}
-</b>` : ''}</button>`).join('')}</nav>
+    <p class="sub">Seller Center: turn your products into income.</p>
+    <dl class="stats"><div><dt>Products</dt><dd>${S.products.length}</dd></div>
+      <div><dt>Paid out</dt><dd>${money(earnedTotal())}</dd></div>
+      <div><dt>New messages</dt><dd>${unread}</dd></div></dl>
+    <nav class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${V.tab === k}" data-action="tab" data-id="${k}">${l}${badge[k] ? `<b>${badge[k]}</b>` : ''}</button>`).join('')}</nav>
     ${body}</main>`;
 }
 function sellerProducts() {
-  const rows = S.products.map(p => `<li 
-class="prow">${artSm(p)}
-    <div class="grow">
-<strong>${esc(p.name)}</strong><span 
-class="cat">${hasSale(p) ? 
-`${money(p.sale)} (was ${money(p.price)})` 
-: money(p.price)} · ${esc(p.cat)} · 
-${p.stock === undefined ? 'Stock not tracked' : p.stock === 0 ? 'Sold out' : 
-`${p.stock} in stock`}</span></div>
+  const rows = S.products.map(p => `<li class="prow">${artSm(p)}
+    <div class="grow"><strong>${esc(p.name)}</strong><span class="cat">${hasSale(p) ? `${money(p.sale)} (was ${money(p.price)})` : money(p.price)} · ${esc(p.cat)} · ${p.stock === undefined ? 'Stock not tracked' : p.stock === 0 ? 'Sold out' : `${p.stock} in stock`}</span></div>
     <div class="pa">${V.confirmDel === p.id
-      ? `<button class="btn sm ghost" data
-action="delno">Cancel</button><button 
-class="btn sm danger" data-action="delyes" 
-data-id="${p.id}">Delete</button>`
-      : `<button class="btn sm ghost" data
-action="restock" data-id="${p.id}" aria
-label="Add 5 to stock of 
-${esc(p.name)}">Restock +5</button><button 
-class="btn sm ghost" data-action="del" 
-data-id="${p.id}" aria-label="Delete 
-${esc(p.name)}">Delete</button>`}</div>
-</li>`).join('');
-  return `<section class="panel"><h2>Add 
-new product</h2>
+      ? `<button class="btn sm ghost" data-action="delno">Cancel</button><button class="btn sm danger" data-action="delyes" data-id="${p.id}">Delete</button>`
+      : `<button class="btn sm ghost" data-action="restock" data-id="${p.id}" aria-label="Add 5 to stock of ${esc(p.name)}">Restock +5</button><button class="btn sm ghost" data-action="del" data-id="${p.id}" aria-label="Delete ${esc(p.name)}">Delete</button>`}</div></li>`).join('');
+  return `<section class="panel"><h2>Add new product</h2>
     <form data-form="product" novalidate>
-      <div class="field"><label 
-for="pn">Product name</label><input id="pn" 
-name="name" maxlength="80" 
-placeholder="e.g. Infinix Hot 40 Pro" 
-autocomplete="off"></div>
-      <div class="two"><div class="field">
-<label for="pp">Price (GH₵)</label><input 
-id="pp" name="price" inputmode="decimal" 
-placeholder="0.00" autocomplete="off">
-</div>
-      <div class="field"><label 
-for="pc">Category</label><select id="pc" 
-name="cat">${CATS.map(c => `<option>${c}
-</option>`).join('')}</select></div></div>
-      <div class="two"><div class="field">
-<label for="ps">Deal price (optional)
-</label><input id="ps" name="sale" 
-inputmode="decimal" placeholder="Lower than 
-price" autocomplete="off"></div>
-      <div class="field"><label for="pk">In 
-stock</label><input id="pk" name="stock" 
-inputmode="numeric" placeholder="e.g. 10" 
-autocomplete="off"></div></div>
-      <div class="field"><label 
-for="pd">Description</label><textarea 
-id="pd" name="desc" placeholder="Condition,
-    size, colour, what is in the box">
-</textarea></div>
-      <div class="two"><div class="field">
-<label for="pw">Warranty (optional)</label>
-<input id="pw" name="warranty" 
-placeholder="e.g. 6 months" 
-autocomplete="off"></div>
-      <div class="field"><label 
-for="pv">Delivery (optional)</label><input 
-id="pv" name="delivery" placeholder="e.g. 
-Accra same day" autocomplete="off"></div>
-</div>
-      <div class="field"><label 
-for="pi">Product image</label><input 
-id="pi" type="file" accept="image/*"><div 
-class="prev" id="prev"></div></div>
-      <p class="err" id="perr" 
-role="alert"></p>
-      <button class="btn primary block" 
-type="submit">Add product</button></form>
-</section>
-    <section><h2 style="margin
-bottom:6px">Your products 
-(${S.products.length})</h2>
-    ${S.products.length ? `<ul>${rows}
-</ul>` : `<div class="empty"><strong>No 
-products yet</strong>Add your first product 
-above. It appears in the shop right away.
-</div>`}</section>`;
+      <div class="field"><label for="pn">Product name</label><input id="pn" name="name" maxlength="80" placeholder="e.g. Infinix Hot 40 Pro" autocomplete="off"></div>
+      <div class="two"><div class="field"><label for="pp">Price (GH₵)</label><input id="pp" name="price" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+      <div class="field"><label for="pc">Category</label><select id="pc" name="cat">${CATS.map(c => `<option>${c}</option>`).join('')}</select></div></div>
+      <div class="two"><div class="field"><label for="ps">Deal price (optional)</label><input id="ps" name="sale" inputmode="decimal" placeholder="Lower than price" autocomplete="off"></div>
+      <div class="field"><label for="pk">In stock</label><input id="pk" name="stock" inputmode="numeric" placeholder="e.g. 10" autocomplete="off"></div></div>
+      <div class="field"><label for="pd">Description</label><textarea id="pd" name="desc" placeholder="Condition, size, colour, what is in the box"></textarea></div>
+      <div class="two"><div class="field"><label for="pw">Warranty (optional)</label><input id="pw" name="warranty" placeholder="e.g. 6 months" autocomplete="off"></div>
+      <div class="field"><label for="pv">Delivery (optional)</label><input id="pv" name="delivery" placeholder="e.g. Accra same day" autocomplete="off"></div></div>
+      <div class="field"><label for="pi">Product image</label><input id="pi" type="file" accept="image/*"><div class="prev" id="prev"></div></div>
+      <p class="err" id="perr" role="alert"></p>
+      <button class="btn primary block" type="submit">Add product</button></form></section>
+    <section><h2 style="margin-bottom:6px">Your products (${S.products.length})</h2>
+    ${S.products.length ? `<ul>${rows}</ul>` : `<div class="empty"><strong>No products yet</strong>Add your first product above. It appears in the shop right away.</div>`}</section>`;
 }
 function statusPill(o) {
   if (o.status === 'delivered') return `<span class="pill">${o.paid ? 'Delivered · money released' : 'Delivered'}</span>`;
-  if (o.status === 'shipped') return `<span class="pill wait">On the way</span>`;
-  return o.paid ? `<span class="pill wait">Paid · held for you</span>` : `<span class="pill wait">Pay on delivery</span>`;
+  if (o.status === 'shipped') return '<span class="pill wait">On the way</span>';
+  return o.paid ? '<span class="pill wait">Paid · held for you</span>' : '<span class="pill wait">Pay on delivery</span>';
 }
 function sellerSales() {
-  const held = S.orders.filter(o => o.paid 
-&& !o.delivered).reduce((a, o) => a + 
-earn(o), 0);
-  const cod = S.orders.filter(o => !o.paid 
-&& !o.delivered).reduce((a, o) => a + 
-earn(o), 0);
+  const held = S.orders.filter(o => o.paid && !o.delivered).reduce((a, o) => a + earn(o), 0);
+  const cod = S.orders.filter(o => !o.paid && !o.delivered).reduce((a, o) => a + earn(o), 0);
   const orders = [...S.orders].sort((a, b) => b.t - a.t);
   const list = orders.map(o => {
     let act = '';
-    if (o.status === 'placed') act = 
-`<button class="btn sm primary" 
-style="margin-top:8px" data-action="ship" 
-data-id="${o.id}">Mark as 
-shipped</button>`;
-    else if (o.status === 'shipped' && 
-!o.paid) act = `<button class="btn sm" 
-style="margin-top:8px" data
-action="delivered" data-id="${o.id}">Mark 
-as delivered</button>`;
-    else if (o.status === 'shipped') act = 
-`<p>Waiting for the buyer to confirm 
-delivery. Your money is released then.
-</p>`;
-    return `<li class="order"><div 
-class="top-row"><strong class="ref">${o.id}
-</strong><strong>${money(earn(o))}</strong>
-</div>
-      <p>${o.items.map(i => `${i.qty} × 
-${esc(i.name)}`).join(', ')}</p>
-      <p>${esc(o.customer.name)} · 
-${esc(o.customer.phone)} · 
-${esc(o.customer.addr)}${o.region ? ', ' + 
-esc(o.region) : ''}</p>
-      <p>${dateOf(o.t)} · ${esc(o.method)} 
-${statusPill(o)}</p>${act}</li>`;
+    if (o.status === 'placed') act = `<button class="btn sm primary" style="margin-top:8px" data-action="ship" data-id="${o.id}">Mark as shipped</button>`;
+    else if (o.status === 'shipped' && !o.paid) act = `<button class="btn sm" style="margin-top:8px" data-action="delivered" data-id="${o.id}">Mark as delivered</button>`;
+    else if (o.status === 'shipped') act = `<p>Waiting for the buyer to confirm delivery. Your money is released then.</p>`;
+    return `<li class="order"><div class="top-row"><strong class="ref">${o.id}</strong><strong>${money(earn(o))}</strong></div>
+      <p>${o.items.map(i => `${i.qty} × ${esc(i.name)}`).join(', ')}</p>
+      <p>${esc(o.customer.name)} · ${esc(o.customer.phone)} · ${esc(o.customer.addr)}${o.region ? ', ' + esc(o.region) : ''}</p>
+      <p>${dateOf(o.t)} · ${esc(o.method)} ${statusPill(o)}</p>${act}</li>`;
   }).join('');
-  return `<dl class="sum"><div><dt>Paid 
-out</dt><dd>${money(earnedTotal())}</dd>
-</div><div><dt>Held until delivery</dt>
-<dd>${money(held)}</dd></div>
-    <div><dt>Cash on delivery pending</dt>
-<dd>${money(cod)}</dd></div><div>
-<dt>Orders</dt><dd>${S.orders.length}</dd>
-</div></dl>
-    ${orders.length ? `<ul>${list}</ul>` : 
-`<div class="empty"><strong>No sales 
-yet</strong>When a customer checks out, the 
-order shows up here. Switch to Shop and 
-place a test order.</div>`}`;
+  return `<dl class="sum"><div><dt>Paid out</dt><dd>${money(earnedTotal())}</dd></div><div><dt>Held until delivery</dt><dd>${money(held)}</dd></div>
+    <div><dt>Cash on delivery pending</dt><dd>${money(cod)}</dd></div><div><dt>Orders</dt><dd>${S.orders.length}</dd></div></dl>
+    ${orders.length ? `<ul>${list}</ul>` : `<div class="empty"><strong>No sales yet</strong>When a customer checks out, the order shows up here. Switch to Shop and place a test order.</div>`}`;
 }
 function reports() {
   const months = [], now = new Date();
   for (let i = 5; i >= 0; i--) {
-    const m = new Date(now.getFullYear(), 
-now.getMonth() - i, 1);
-    months.push({key: m.getFullYear() + '-' 
-+ m.getMonth(), label: 
-m.toLocaleString('en-GB', {month: 
-'short'}), rev: 0, n: 0});
+    const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({key: m.getFullYear() + '-' + m.getMonth(), label: m.toLocaleString('en-GB', {month: 'short'}), rev: 0, n: 0});
   }
- S.orders.forEach(o => {
-    const d = new Date(o.t), k = 
-d.getFullYear() + '-' + d.getMonth(), m = 
-months.find(x => x.key === k);
+  S.orders.forEach(o => {
+    const d = new Date(o.t), k = d.getFullYear() + '-' + d.getMonth(), m = months.find(x => x.key === k);
     if (m) { m.n++; m.rev += earn(o); }
   });
-  const cur = months[months.length - 1], 
-max = Math.max(...months.map(m => m.rev), 
-1);
-  const fmt = n => n >= 1000 ? (n / 
-1000).toFixed(1).replace('.0', '') + 'k' : 
-String(Math.round(n));
+  const cur = months[months.length - 1], max = Math.max(...months.map(m => m.rev), 1);
+  const fmt = n => n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(Math.round(n));
   const units = {};
-  S.orders.forEach(o => o.items.forEach(i => { units[i.name] = (units[i.name] || 0) + 
-i.qty; }));
-  const top = 
-Object.entries(units).sort((a, b) => b[1] - 
-a[1])[0];
-  const n = S.orders.length, avg = n ? 
-S.orders.reduce((a, o) => a + earn(o), 0) / 
-n : 0;
-  return `<dl class="sum"><div><dt>Sales 
-this month</dt><dd>${money(cur.rev)}</dd>
-</div><div><dt>Orders this month</dt>
-<dd>${cur.n}</dd></div>
-    <div><dt>All-time orders</dt><dd>${n}
-</dd></div><div><dt>Average order</dt>
-<dd>${money(avg)}</dd></div></dl>
-    <section class="panel"><h2>Monthly 
-sales</h2>
-    ${n ? `<div class="bars" role="img" 
-aria-label="Sales for the last six 
-months">${months.map(m => `<div 
-class="bcol"><em>${m.rev ? fmt(m.rev) : ''}
-</em><i style="height:${Math.max(2, 
-Math.round(m.rev / max * 130))}px"></i>
-<small>${m.label}</small></div>`).join('')}
-</div>`
-      : `<div class="empty"><strong>No 
-sales yet</strong>Your monthly chart fills 
-in after your first order.</div>`}
-    ${top ? `<p class="note">Best seller: 
-${esc(top[0])} (${top[1]} sold)</p>` : ''}
-</section>`;
+  S.orders.forEach(o => o.items.forEach(i => { units[i.name] = (units[i.name] || 0) + i.qty; }));
+  const top = Object.entries(units).sort((a, b) => b[1] - a[1])[0];
+  const n = S.orders.length, avg = n ? S.orders.reduce((a, o) => a + earn(o), 0) / n : 0;
+  return `<dl class="sum"><div><dt>Sales this month</dt><dd>${money(cur.rev)}</dd></div><div><dt>Orders this month</dt><dd>${cur.n}</dd></div>
+    <div><dt>All-time orders</dt><dd>${n}</dd></div><div><dt>Average order</dt><dd>${money(avg)}</dd></div></dl>
+    <section class="panel"><h2>Monthly sales</h2>
+    ${n ? `<div class="bars" role="img" aria-label="Sales for the last six months">${months.map(m => `<div class="bcol"><em>${m.rev ? fmt(m.rev) : ''}</em><i style="height:${Math.max(2, Math.round(m.rev / max * 130))}px"></i><small>${m.label}</small></div>`).join('')}</div>`
+      : `<div class="empty"><strong>No sales yet</strong>Your monthly chart fills in after your first order.</div>`}
+    ${top ? `<p class="note">Best seller: ${esc(top[0])} (${top[1]} sold)</p>` : ''}</section>`;
 }
+
 /* sheets */
 function sheets() {
   if (V.chat) return chatView();
@@ -526,260 +407,91 @@ function sheets() {
   const map = {cart: [cartSheet, 'Your cart'], checkout: [checkoutSheet, 'Checkout'], success: [successSheet, 'Order placed'], offer: [offerSheet, 'Make an offer'], review: [reviewSheet, 'Rate your purchase']};
   const m = map[V.sheet];
   if (!m) return '';
-  return `<div class="backdrop"><div 
-class="sheet" role="dialog" aria
-modal="true" aria-label="${m[1]}" 
-tabindex="-1">${m[0]()}</div></div>`;
+  return `<div class="backdrop"><div class="sheet" role="dialog" aria-modal="true" aria-label="${m[1]}" tabindex="-1">${m[0]()}</div></div>`;
 }
 function cartSheet() {
   const items = cartItems();
-  const head = `<div class="shead"><h2>Your 
-cart</h2><button class="x" data
-action="closeSheet" aria-label="Close 
-cart">✕</button></div>`;
-  if (!items.length) return head + `<div 
-class="empty"><strong>Your cart is 
-empty</strong>Browse products and tap Add 
-to cart.</div><button class="btn block" 
-style="margin-top:14px" data
-action="closeSheet">Keep 
-shopping</button>`;
-  return head + items.map(({p, qty}) => 
-`<div class="line">${artSm(p)}
-    <div class="grow">
-<strong>${esc(p.name)}</strong><span 
-class="cat">${money(lineTotal(p, 
-qty))}${dealOf(p) != null ? " · your accepted offer applied" : ""}</span>
-      <div class="qty"><button data
-action="dec" data-id="${p.id}" aria
-label="Decrease quantity">−</button>
-<span>${qty}</span><button data
-action="inc" data-id="${p.id}" aria
-label="Increase quantity">+</button></div>
-</div>
- <button class="link" data-action="rm" 
-data-id="${p.id}">Remove</button>
-</div>`).join('')
-    + `<div class="total">
-<span>Subtotal</span>
-<strong>${money(sumItems(items))}</strong>
-</div>
-    <p class="hint" style="margin
-bottom:12px">Delivery fee is added at 
-checkout.</p>
-    <button class="btn primary block" data
-action="checkout">Checkout</button>`;
+  const head = `<div class="shead"><h2>Your cart</h2><button class="x" data-action="closeSheet" aria-label="Close cart">✕</button></div>`;
+  if (!items.length) return head + `<div class="empty"><strong>Your cart is empty</strong>Browse products and tap Add to cart.</div><button class="btn block" style="margin-top:14px" data-action="closeSheet">Keep shopping</button>`;
+  return head + items.map(({p, qty}) => `<div class="line">${artSm(p)}
+    <div class="grow"><strong>${esc(p.name)}</strong><span class="cat">${money(lineTotal(p, qty))}${dealOf(p) != null ? ' · your accepted offer applied' : ''}</span>
+      <div class="qty"><button data-action="dec" data-id="${p.id}" aria-label="Decrease quantity">−</button><span>${qty}</span><button data-action="inc" data-id="${p.id}" aria-label="Increase quantity">+</button></div></div>
+    <button class="link" data-action="rm" data-id="${p.id}">Remove</button></div>`).join('')
+    + `<div class="total"><span>Subtotal</span><strong>${money(sumItems(items))}</strong></div>
+    <p class="hint" style="margin-bottom:12px">Delivery fee is added at checkout.</p>
+    <button class="btn primary block" data-action="checkout">Checkout</button>`;
 }
 function checkoutSheet() {
-  const items = checkoutItems(), c = V.co, 
-sub = sumItems(items), fee = 
-feeFor(c.region, sub), total = sub + fee;
-  const opt = (id, t, d) => `<button 
-type="button" class="opt" role="radio" 
-aria-checked="${c.method === id}" data
-action="method" data-id="${id}"><i 
-class="dot"></i><div><strong>${t}</strong>
-<span>${d}</span></div></button>`;
+  const items = checkoutItems(), c = V.co, sub = sumItems(items), fee = feeFor(c.region, sub), total = sub + fee;
+  const opt = (id, t, d) => `<button type="button" class="opt" role="radio" aria-checked="${c.method === id}" data-action="method" data-id="${id}"><i class="dot"></i><div><strong>${t}</strong><span>${d}</span></div></button>`;
   let fields = '';
-  if (c.method === 'momo') fields = `<div 
-class="sec"><div class="two">
-      <div class="field"><label 
-for="net">Network</label><select id="net" 
-data-bind="net">${['MTN', 'Telecel', 
-'AirtelTigo'].map(n => `<option ${c.net === 
-n ? 'selected' : ''}>${n}
-</option>`).join('')}</select></div>
-      <div class="field"><label 
-for="momo">MoMo number</label><input 
-id="momo" data-bind="momo" inputmode="tel" 
-placeholder="0244 123 456" 
-value="${esc(c.momo)}"></div></div>
-      <p class="hint">You will get a prompt 
-on your phone to approve the payment.</p>
-</div>`;
-  if (c.method === 'card') fields = `<div 
-class="sec">
-      <div class="field"><label 
-for="card">Card number</label><input 
-id="card" data-bind="card" 
-inputmode="numeric" placeholder="0000 0000 
-0000 0000" autocomplete="cc-number" 
-value="${esc(c.card)}"></div>
- <div class="two"><div class="field">
-<label for="exp">Expiry (MM/YY)</label>
-<input id="exp" data-bind="exp" 
-inputmode="numeric" placeholder="12/30" 
-autocomplete="cc-exp" 
-value="${esc(c.exp)}"></div>
-      <div class="field"><label 
-for="cvv">CVV</label><input id="cvv" data
-bind="cvv" inputmode="numeric" 
-placeholder="123" autocomplete="cc-csc" 
-value="${esc(c.cvv)}"></div></div>
-      <button type="button" class="link" 
-data-action="testcard">Fill in the test 
-card</button></div>`;
-  if (c.method === 'cod') fields = `<p 
-class="hint sec">Pay the rider in cash when 
-your order arrives.</p>`;
-  const btnText = V.busy ? 'Processing…' : 
-c.method === 'cod' ? `Place order · 
-${money(total)}` : `Pay ${money(total)}`;
-  return `<div class="shead">
-<h2>Checkout</h2><button class="x" data
-action="closeSheet" aria-label="Close 
-checkout">✕</button></div>
-    ${items.map(({p, qty}) => `<div 
-class="line">${artSm(p)}<div class="grow">
-<strong>${esc(p.name)}</strong><span 
-class="cat">${qty} × 
-${money(baseOf(p))}${dealOf(p) != null ? ' · accepted offer applied' : ''}</span>
-</div><strong>${money(lineTotal(p, qty))}
-</strong></div>`).join('')}
+  if (c.method === 'momo') fields = `<div class="sec"><div class="two">
+      <div class="field"><label for="net">Network</label><select id="net" data-bind="net">${['MTN', 'Telecel', 'AirtelTigo'].map(n => `<option ${c.net === n ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+      <div class="field"><label for="momo">MoMo number</label><input id="momo" data-bind="momo" inputmode="tel" placeholder="0244 123 456" value="${esc(c.momo)}"></div></div>
+      <p class="hint">You will get a prompt on your phone to approve the payment.</p></div>`;
+  if (c.method === 'card') fields = `<div class="sec">
+      <div class="field"><label for="card">Card number</label><input id="card" data-bind="card" inputmode="numeric" placeholder="0000 0000 0000 0000" autocomplete="cc-number" value="${esc(c.card)}"></div>
+      <div class="two"><div class="field"><label for="exp">Expiry (MM/YY)</label><input id="exp" data-bind="exp" inputmode="numeric" placeholder="12/30" autocomplete="cc-exp" value="${esc(c.exp)}"></div>
+      <div class="field"><label for="cvv">CVV</label><input id="cvv" data-bind="cvv" inputmode="numeric" placeholder="123" autocomplete="cc-csc" value="${esc(c.cvv)}"></div></div>
+      <button type="button" class="link" data-action="testcard">Fill in the test card</button></div>`;
+  if (c.method === 'cod') fields = `<p class="hint sec">Pay the rider in cash when your order arrives.</p>`;
+  const btnText = V.busy ? 'Processing…' : c.method === 'cod' ? `Place order · ${money(total)}` : `Pay ${money(total)}`;
+  return `<div class="shead"><h2>Checkout</h2><button class="x" data-action="closeSheet" aria-label="Close checkout">✕</button></div>
+    ${items.map(({p, qty}) => `<div class="line">${artSm(p)}<div class="grow"><strong>${esc(p.name)}</strong><span class="cat">${qty} × ${money(baseOf(p))}${dealOf(p) != null ? ' · accepted offer applied' : ''}</span></div><strong>${money(lineTotal(p, qty))}</strong></div>`).join('')}
     <form data-form="checkout" novalidate>
-      <div class="sec"><h3>Delivery 
-details</h3>
-        <div class="field"><label 
-for="cn">Full name</label><input id="cn" 
-data-bind="name" autocomplete="name" 
-value="${esc(c.name)}"></div>
-        <div class="field"><label 
-for="cp">Phone number</label><input id="cp" 
-data-bind="phone" inputmode="tel" 
-autocomplete="tel" placeholder="0244 123 
-456" value="${esc(c.phone)}"></div>
-        <div class="two"><div 
-class="field"><label 
-for="cr">Region</label><select id="cr" 
-data-bind="region">${Object.keys(REGIONS).map(r => `<option ${c.region === r ? 'selected' : 
-''}>${r}</option>`).join('')}</select>
-</div>
- <div class="field"><label 
-for="ca">Area and landmark</label><input 
-id="ca" data-bind="addr" 
-autocomplete="street-address" 
-placeholder="East Legon, near A&amp;C Mall" 
-value="${esc(c.addr)}"></div></div></div>
-      <div class="rows"><div>
-<span>Subtotal</span><span>${money(sub)}
-</span></div><div><span>Delivery to 
-${esc(c.region)}</span><span>${fee ? 
-money(fee) : 'Free'}</span></div></div>
-      <div class="total"><span>Total</span>
-<strong>${money(total)}</strong></div>
-      <div class="sec"><h3>Payment 
-method</h3>
-        <div class="opts" role="radiogroup" 
-aria-label="Payment method">
-          ${opt('momo', 'Mobile Money', 
-'MTN, Telecel or AirtelTigo')}${opt('card', 
-'Card', 'Visa or Mastercard')}${opt('cod', 
-'Cash on delivery', 'Pay when it arrives')}
-</div>${fields}
-        ${c.method !== 'cod' ? `<div 
-class="protect">${ICON.shield}<span>Buyer 
-protection: we hold your payment until you 
-confirm your order arrived.</span></div>` : 
-''}</div>
-      <p class="err" 
-role="alert">${esc(V.err)}</p>
-      ${V.busy ? `<div class="step"><i 
-class="spin"></i><span>${esc(V.step)}
-</span></div>` : ''}
-      <button class="btn primary block" 
-type="submit" ${V.busy ? 'disabled' : 
-''}>${btnText}</button>
-      <p class="note">Test mode. No real 
-money moves in this version.</p></form>`;
+      <div class="sec"><h3>Delivery details</h3>
+        <div class="field"><label for="cn">Full name</label><input id="cn" data-bind="name" autocomplete="name" value="${esc(c.name)}"></div>
+        <div class="field"><label for="cp">Phone number</label><input id="cp" data-bind="phone" inputmode="tel" autocomplete="tel" placeholder="0244 123 456" value="${esc(c.phone)}"></div>
+        <div class="two"><div class="field"><label for="cr">Region</label><select id="cr" data-bind="region">${Object.keys(REGIONS).map(r => `<option ${c.region === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+        <div class="field"><label for="ca">Area and landmark</label><input id="ca" data-bind="addr" autocomplete="street-address" placeholder="East Legon, near A&amp;C Mall" value="${esc(c.addr)}"></div></div></div>
+      <div class="rows"><div><span>Subtotal</span><span>${money(sub)}</span></div><div><span>Delivery to ${esc(c.region)}</span><span>${fee ? money(fee) : 'Free'}</span></div></div>
+      <div class="total"><span>Total</span><strong>${money(total)}</strong></div>
+      <div class="sec"><h3>Payment method</h3>
+        <div class="opts" role="radiogroup" aria-label="Payment method">
+          ${opt('momo', 'Mobile Money', 'MTN, Telecel or AirtelTigo')}${opt('card', 'Card', 'Visa or Mastercard')}${opt('cod', 'Cash on delivery', 'Pay when it arrives')}</div>${fields}
+        ${c.method !== 'cod' ? `<div class="protect">${ICON.shield}<span>Buyer protection: we hold your payment until you confirm your order arrived.</span></div>` : ''}</div>
+      <p class="err" role="alert">${esc(V.err)}</p>
+      ${V.busy ? `<div class="step"><i class="spin"></i><span>${esc(V.step)}</span></div>` : ''}
+      <button class="btn primary block" type="submit" ${V.busy ? 'disabled' : ''}>${btnText}</button>
+      <p class="note">Test mode. No real money moves in this version.</p></form>`;
 }
 function successSheet() {
   const o = V.last;
   if (!o) return '';
-  return `<div class="shead"><span></span>
-<button class="x" data-action="closeSheet" 
-aria-label="Close">✕</button></div>
-    <div class="ok">${ICON.check}</div>
-<h2>Order placed</h2>
-    <p class="sub">Order <span 
-class="ref">${o.id}</span> · 
-${money(o.total)}</p>
- <p class="sub">${o.paid ? `Paid with 
-${esc(o.method)}. We hold your money until 
-you confirm delivery.` : `Pay the rider in 
-cash on delivery.`} ${SELLER} will deliver 
-to ${esc(o.customer.addr)}, 
-${esc(o.region)}.</p>
-    <div class="stack" style="margin
-top:20px"><button class="btn primary block" 
-data-action="orders">Track your 
-order</button>
-    <button class="btn block ghost" data
-action="closeSheet">Keep shopping</button>
-</div>`;
+  return `<div class="shead"><span></span><button class="x" data-action="closeSheet" aria-label="Close">✕</button></div>
+    <div class="ok">${ICON.check}</div><h2>Order placed</h2>
+    <p class="sub">Order <span class="ref">${o.id}</span> · ${money(o.total)}</p>
+    <p class="sub">${o.paid ? `Paid with ${esc(o.method)}. We hold your money until you confirm delivery.` : 'Pay the rider in cash on delivery.'} ${SELLER} will deliver to ${esc(o.customer.addr)}, ${esc(o.region)}.</p>
+    <div class="stack" style="margin-top:20px"><button class="btn primary block" data-action="orders">Track your order</button>
+    <button class="btn block ghost" data-action="closeSheet">Keep shopping</button></div>`;
 }
 function offerSheet() {
   const p = byId(V.offerPid);
   if (!p) return '';
   const b = baseOf(p);
-  const presets = [95, 90, 85].map(pc => 
-Math.round(b * pc / 100));
-  return `<div class="shead"><h2>Make an 
-offer</h2><button class="x" data
-action="closeSheet" aria
-label="Close">✕</button></div>
-    <div class="line">${artSm(p)}<div 
-class="grow"><strong>${esc(p.name)}
-</strong><span class="cat">Asking price 
-${money(b)}</span></div></div>
-    <form data-form="offer" novalidate 
-style="margin-top:14px">
-      <div class="presets" aria
-label="Quick offers">${presets.map(v => 
-`<button type="button" data-action="preset" 
-data-id="${v}">${money(v)}
-</button>`).join('')}</div>
-      <div class="field"><label 
-for="of">Your offer (GH₵)</label><input 
-id="of" inputmode="decimal" 
-placeholder="e.g. ${presets[1]}" 
-autocomplete="off"></div>
-      <p class="err" 
-role="alert">${esc(V.err)}</p>
-      <button class="btn primary block" 
-type="submit">Send offer</button>
-      <p class="note">The seller can accept 
-or decline. If they accept, the price 
-applies to one item when you buy.</p>
-</form>`;
-    }
-    function reviewSheet() {
+  const presets = [95, 90, 85].map(pc => Math.round(b * pc / 100));
+  return `<div class="shead"><h2>Make an offer</h2><button class="x" data-action="closeSheet" aria-label="Close">✕</button></div>
+    <div class="line">${artSm(p)}<div class="grow"><strong>${esc(p.name)}</strong><span class="cat">Asking price ${money(b)}</span></div></div>
+    <form data-form="offer" novalidate style="margin-top:14px">
+      <div class="presets" aria-label="Quick offers">${presets.map(v => `<button type="button" data-action="preset" data-id="${v}">${money(v)}</button>`).join('')}</div>
+      <div class="field"><label for="of">Your offer (GH₵)</label><input id="of" inputmode="decimal" placeholder="e.g. ${presets[1]}" autocomplete="off"></div>
+      <p class="err" role="alert">${esc(V.err)}</p>
+      <button class="btn primary block" type="submit">Send offer</button>
+      <p class="note">The seller can accept or decline. If they accept, the price applies to one item when you buy.</p></form>`;
+}
+function reviewSheet() {
   const r = V.rv;
   if (!r) return '';
   const p = byId(r.pid);
-  return `<div class="shead"><h2>Rate your 
-purchase</h2><button class="x" data
-action="closeSheet" aria
-label="Close">✕</button></div>
-    <p><strong>${p ? esc(p.name) : ''}
-</strong></p>
-    <div class="starrow" role="radiogroup" 
-  aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button type="button" role="radio" 
-aria-checked="${r.rating === n}" class="${n 
-<= r.rating ? 'on' : ''}" data
-action="star" data-id="${n}" aria
-label="${n} star${n > 1 ? 's' : 
-''}">★</button>`).join('')}</div>
+  return `<div class="shead"><h2>Rate your purchase</h2><button class="x" data-action="closeSheet" aria-label="Close">✕</button></div>
+    <p><strong>${p ? esc(p.name) : ''}</strong></p>
+    <div class="starrow" role="radiogroup" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button type="button" role="radio" aria-checked="${r.rating === n}" class="${n <= r.rating ? 'on' : ''}" data-action="star" data-id="${n}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
     <form data-form="review" novalidate>
-      <div class="field"><label 
-for="rt">Your review (optional)</label>
-<textarea id="rt" data-rv="text" 
-placeholder="How was the item and the 
-delivery?">${esc(r.text)}</textarea></div>
-      <p class="err" 
-role="alert">${esc(V.err)}</p>
-      <button class="btn primary block" 
-type="submit">Post review</button></form>`;
+      <div class="field"><label for="rt">Your review (optional)</label><textarea id="rt" data-rv="text" placeholder="How was the item and the delivery?">${esc(r.text)}</textarea></div>
+      <p class="err" role="alert">${esc(V.err)}</p>
+      <button class="btn primary block" type="submit">Post review</button></form>`;
 }
+
 function chatView() {
   const {pid, as} = V.chat, p = byId(pid);
   if (!p) return '';
@@ -791,388 +503,262 @@ function chatView() {
     const me = m.from === as;
     if (m.offer) {
       const st = m.offer.status;
-      const label = st === 'accepted' ? 'Accepted' : st === 'declined' ? 'Declined'
-        : (as === 'seller' ? 'Waiting for your reply' : 'Waiting for the seller');
-      return `<div class="bub ${me ? 'me' : 
-'them'} offer"><strong>Offer: 
-${money(m.offer.amount)}</strong><span 
-class="ostat ${st}">${label}</span>
-        ${as === 'seller' && st === 
-'pending' ? `<div class="orow"><button 
-class="btn sm" data-action="offerno" data
-id="${i}">Decline</button><button 
-class="btn sm primary" data
-action="offeryes" data
-id="${i}">Accept</button></div>` : ''}
-<small>${timeOf(m.t)}</small></div>`;
+      const label = st === 'accepted' ? 'Accepted' : st === 'declined' ? 'Declined' : (as === 'seller' ? 'Waiting for your reply' : 'Waiting for the seller');
+      return `<div class="bub ${me ? 'me' : 'them'} offer"><strong>Offer: ${money(m.offer.amount)}</strong><span class="ostat ${st}">${label}</span>
+        ${as === 'seller' && st === 'pending' ? `<div class="orow"><button class="btn sm" data-action="offerno" data-id="${i}">Decline</button><button class="btn sm primary" data-action="offeryes" data-id="${i}">Accept</button></div>` : ''}<small>${timeOf(m.t)}</small></div>`;
     }
-    return `<div class="bub ${me ? 'me' : 
-'them'}">${esc(m.text)}
-<small>${timeOf(m.t)}</small></div>`;
+    return `<div class="bub ${me ? 'me' : 'them'}">${esc(m.text)}<small>${timeOf(m.t)}</small></div>`;
   };
-  return `<section class="chat" 
-role="dialog" aria-modal="true" aria
-label="Chat about ${esc(p.name)}">
-    <div class="chat-head"><button 
-class="x" data-action="closechat" aria
-label="Back">${ICON.back}
-</button>${artSm(p)}
-      <div class="grow">
-<strong>${esc(p.name)}</strong><span>${as 
-=== 'customer' ? SELLER : 'Customer'} · 
-${money(baseOf(p))}</span></div></div>
-    <div class="msgs" 
-id="msgs">${msgs.length ? 
-msgs.map(bubble).join('')
-      : `<div class="chat-empty">${as === 'customer' ? 'Ask the seller about price, delivery or size. Tap a suggestion below or write your own.' : 'No messages yet.'}
-</div>`}</div>
-<div class="quick">${quick.map(q => 
-`<button data-action="quick" data
-text="${esc(q)}">${esc(q)}
-</button>`).join('')}</div>
-    <form class="compose" data-form="chat" 
-autocomplete="off"><input id="cm" 
-name="text" placeholder="Write a message" 
-aria-label="Message"><button type="submit" 
-aria-label="Send message">${ICON.send}
-</button></form></section>`;
+  return `<section class="chat" role="dialog" aria-modal="true" aria-label="Chat about ${esc(p.name)}">
+    <div class="chat-head"><button class="x" data-action="closechat" aria-label="Back">${ICON.back}</button>${artSm(p)}
+      <div class="grow"><strong>${esc(p.name)}</strong><span>${as === 'customer' ? SELLER : 'Customer'} · ${money(baseOf(p))}</span></div></div>
+    <div class="msgs" id="msgs">${msgs.length ? msgs.map(bubble).join('')
+      : `<div class="chat-empty">${as === 'customer' ? 'Ask the seller about price, delivery or size. Tap a suggestion below or write your own.' : 'No messages yet.'}</div>`}</div>
+    <div class="quick">${quick.map(q => `<button data-action="quick" data-text="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <form class="compose" data-form="chat" autocomplete="off"><input id="cm" name="text" placeholder="Write a message" aria-label="Message"><button type="submit" aria-label="Send message">${ICON.send}</button></form></section>`;
 }
+
 /* ---------- render ---------- */
+function installBanner() {
+  if (V.installDismissed || isStandalone()) return '';
+  return `<div class="instbar"><span>Install MarketHub for a full, app-like experience</span>
+    <div class="instbtns"><button class="btn sm primary" data-action="install">Install</button>
+    <button class="x" data-action="dismissInstall" aria-label="Dismiss">✕</button></div></div>`;
+}
 function render() {
-  let h = header();
-  if (!S.role) h += gate();
-  else if (S.role === 'customer') h += 
-V.screen === 'detail' ? detail() : V.screen 
-=== 'inbox' ? inbox() : V.screen === 
-'orders' ? ordersView() : home();
+  let h = header() + installBanner();
+  if (!S.userId) h += authView();
+  else if (!S.role) h += gate();
+  else if (S.role === 'customer') h += V.screen === 'detail' ? detail() : V.screen === 'inbox' ? inbox() : V.screen === 'orders' ? ordersView() : home();
   else h += seller();
   h += sheets();
   $('#app').innerHTML = h;
-  document.body.style.overflow = (V.sheet 
-|| V.chat) ? 'hidden' : '';
-  const m = $('#msgs'); if (m) m.scrollTop 
-= m.scrollHeight;
+  document.body.style.overflow = (V.sheet || V.chat) ? 'hidden' : '';
+  const m = $('#msgs'); if (m) m.scrollTop = m.scrollHeight;
   tickCd();
 }
 function tickCd() {
   const el = $('#cd'); if (!el) return;
-  const n = new Date(), e = new 
-Date(n.getFullYear(), n.getMonth(), 
-n.getDate() + 1);
-  const s = Math.max(0, Math.floor((e - n) 
-/ 1000)), p = x => String(x).padStart(2, 
-'0');
-  el.textContent = p(Math.floor(s / 3600)) 
-+ ':' + p(Math.floor(s % 3600 / 60)) + ':' 
-+ p(s % 60);
+  const n = new Date(), e = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1);
+  const s = Math.max(0, Math.floor((e - n) / 1000)), p = x => String(x).padStart(2, '0');
+  el.textContent = p(Math.floor(s / 3600)) + ':' + p(Math.floor(s % 3600 / 60)) + ':' + p(s % 60);
 }
 setInterval(tickCd, 1000);
+
 /* ---------- actions ---------- */
-function openSheet(name) { V.sheet = name; 
-V.err = ''; render(); const s = 
-$('.sheet'); if (s) s.focus({preventScroll: 
-true}); }
+function openSheet(name) { V.sheet = name; V.err = ''; render(); const s = $('.sheet'); if (s) s.focus({preventScroll: true}); }
 function openChat(pid, as) {
   V.chat = {pid, as}; V.sheet = null;
-  if (as === 'seller') delete 
-S.unreadS[pid]; else delete S.unreadC[pid];
+  if (as === 'seller') delete S.unreadS[pid]; else delete S.unreadC[pid];
   save(); render();
 }
 function addToCart(id) {
   const p = byId(id); if (!p) return;
-  if (!inStock(p)) { toast('Sold out'); 
-return; }
+  if (!inStock(p)) { toast('Sold out'); return; }
   const e = S.cart.find(c => c.id === id);
-  if (e && p.stock !== undefined && e.qty 
->= p.stock) { toast(`Only ${p.stock} in 
-stock`); return; }
-  if (e) e.qty++; else S.cart.push({id, 
-qty: 1});
+  if (e && p.stock !== undefined && e.qty >= p.stock) { toast(`Only ${p.stock} in stock`); return; }
+  if (e) e.qty++; else S.cart.push({id, qty: 1});
   save(); render(); toast('Added to cart');
 }
 function pushMsg(pid, from, text, extra) {
-  const m = Object.assign({from, text, t: 
-Date.now()}, extra || {});
-  (S.chats[pid] = S.chats[pid] || 
-[]).push(m);
-  const map = from === 'customer' ? 
-S.unreadS : S.unreadC;
+  const m = Object.assign({from, text, t: Date.now()}, extra || {});
+  (S.chats[pid] = S.chats[pid] || []).push(m);
+  const map = from === 'customer' ? S.unreadS : S.unreadC;
   map[pid] = (map[pid] || 0) + 1;
 }
+
 const ACTIONS = {
-  home() { if (!S.role) return; V.screen = 
-'home'; V.sheet = null; V.chat = null; 
-render(); window.scrollTo(0, 0); },
-  role(id) { S.role = id; V.screen = 
-'home'; V.sheet = null; V.chat = null; 
-save(); render(); window.scrollTo(0, 0); },
+  home() { if (!S.role) return; V.screen = 'home'; V.sheet = null; V.chat = null; render(); window.scrollTo(0, 0); },
+  role(id) { S.role = id; V.screen = 'home'; V.sheet = null; V.chat = null; save(); render(); window.scrollTo(0, 0); },
+  authmode(id) { V.auth.mode = id; V.authErr = ''; render(); },
+  logout() { S.userId = null; V.screen = 'home'; V.sheet = null; V.chat = null; save(); render(); window.scrollTo(0, 0); toast('Signed out'); },
+  install() {
+    if (window.__deferredPrompt) {
+      window.__deferredPrompt.prompt();
+      window.__deferredPrompt.userChoice.finally(() => { window.__deferredPrompt = null; V.installDismissed = true; render(); });
+    } else {
+      toast('iPhone: tap Share, then "Add to Home Screen". Android Chrome: tap ⋮, then "Install app".');
+    }
+  },
+  dismissInstall() { V.installDismissed = true; render(); },
   cat(id) { V.cat = id; render(); },
-  open(id) { V.pid = id; V.screen = 
-'detail'; render(); window.scrollTo(0, 0); 
-},
+  open(id) { V.pid = id; V.screen = 'detail'; render(); window.scrollTo(0, 0); },
   add(id) { addToCart(id); },
-  buy(id) { const p = byId(id); if (!p || 
-!inStock(p)) return; V.buy = id; V.busy = 
-false; openSheet('checkout'); },
-  chat(id) { V.sheet = null; openChat(id, 
-S.role === 'seller' ? 'seller' : 
-'customer'); },
+  buy(id) { const p = byId(id); if (!p || !inStock(p)) return; V.buy = id; V.busy = false; openSheet('checkout'); },
+  chat(id) { V.sheet = null; openChat(id, S.role === 'seller' ? 'seller' : 'customer'); },
   cart() { openSheet('cart'); },
-  closeSheet() { V.sheet = null; V.busy = 
-false; render(); },
-  inc(id) { const c = S.cart.find(x => x.id 
-=== id), p = byId(id); if (c && p && 
-(p.stock === undefined || c.qty < p.stock)) 
-c.qty++; else toast('No more in stock'); 
-save(); render(); },
-  dec(id) { const c = S.cart.find(x => x.id 
-=== id); if (c) { c.qty--; if (c.qty <= 0) 
-S.cart = S.cart.filter(x => x.id !== id); } 
-save(); render(); },
-  rm(id) { S.cart = S.cart.filter(x => x.id 
-!== id); save(); render(); },
-  checkout() { if (!cartItems().length) 
-return; V.buy = null; V.busy = false; 
-openSheet('checkout'); },
-  method(id) { V.co.method = id; V.err = 
-''; render(); },
-  testcard() { V.co.card = '4084 0840 8408 4081'; V.co.exp = '12/30'; V.co.cvv = 
-'408'; render(); },
-  inbox() { V.screen = 'inbox'; render(); 
-window.scrollTo(0, 0); },
-  orders() { V.sheet = null; V.screen = 
-'orders'; render(); window.scrollTo(0, 0); 
-},
-  thread(id) { openChat(id, S.role === 
-'seller' ? 'seller' : 'customer'); },
+  closeSheet() { V.sheet = null; V.busy = false; render(); },
+  inc(id) { const c = S.cart.find(x => x.id === id), p = byId(id); if (c && p && (p.stock === undefined || c.qty < p.stock)) c.qty++; else toast('No more in stock'); save(); render(); },
+  dec(id) { const c = S.cart.find(x => x.id === id); if (c) { c.qty--; if (c.qty <= 0) S.cart = S.cart.filter(x => x.id !== id); } save(); render(); },
+  rm(id) { S.cart = S.cart.filter(x => x.id !== id); save(); render(); },
+  checkout() { if (!cartItems().length) return; V.buy = null; V.busy = false; openSheet('checkout'); },
+  method(id) { V.co.method = id; V.err = ''; render(); },
+  testcard() { V.co.card = '4084 0840 8408 4081'; V.co.exp = '12/30'; V.co.cvv = '408'; render(); },
+  inbox() { V.screen = 'inbox'; render(); window.scrollTo(0, 0); },
+  orders() { V.sheet = null; V.screen = 'orders'; render(); window.scrollTo(0, 0); },
+  thread(id) { openChat(id, S.role === 'seller' ? 'seller' : 'customer'); },
   closechat() { V.chat = null; render(); },
-  quick(id, el) { const i = $('#cm'); if 
-(i) { i.value = el.dataset.text; i.focus(); 
-} },
+  quick(id, el) { const i = $('#cm'); if (i) { i.value = el.dataset.text; i.focus(); } },
   wish(id) {
     const i = S.wish.indexOf(id);
-    if (i >= 0) S.wish.splice(i, 1); else 
-S.wish.push(id);
-    save(); render(); toast(i >= 0 ? 
-'Removed from saved' : 'Saved for later');
+    if (i >= 0) S.wish.splice(i, 1); else S.wish.push(id);
+    save(); render(); toast(i >= 0 ? 'Removed from saved' : 'Saved for later');
   },
-  offer(id) { const p = byId(id); if (!p || 
-!inStock(p)) return; V.offerPid = id;
-openSheet('offer'); },
-  preset(id) { const i = $('#of'); if (i) { 
-i.value = id; i.focus(); } },
+  offer(id) { const p = byId(id); if (!p || !inStock(p)) return; V.offerPid = id; openSheet('offer'); },
+  preset(id) { const i = $('#of'); if (i) { i.value = id; i.focus(); } },
   offeryes(i) {
-    const pid = V.chat.pid, m = 
-S.chats[pid][+i];
-    if (!m || !m.offer || m.offer.status 
-!== 'pending') return;
-    m.offer.status = 'accepted'; 
-S.deals[pid] = m.offer.amount;
-    pushMsg(pid, 'seller', `Offer accepted 
-at ${money(m.offer.amount)}. Buy now to 
-lock in that price.`);
+    const pid = V.chat.pid, m = S.chats[pid][+i];
+    if (!m || !m.offer || m.offer.status !== 'pending') return;
+    m.offer.status = 'accepted'; S.deals[pid] = m.offer.amount;
+    pushMsg(pid, 'seller', `Offer accepted at ${money(m.offer.amount)}. Buy now to lock in that price.`);
     save(); render(); toast('Offer accepted');
   },
   offerno(i) {
-    const pid = V.chat.pid, m = 
-S.chats[pid][+i];
-    if (!m || !m.offer || m.offer.status 
-!== 'pending') return;
+    const pid = V.chat.pid, m = S.chats[pid][+i];
+    if (!m || !m.offer || m.offer.status !== 'pending') return;
     m.offer.status = 'declined';
     pushMsg(pid, 'seller', 'Sorry, I cannot go that low. Try a higher offer.');
     save(); render(); toast('Offer declined');
   },
-  ship(id) { const o = S.orders.find(x => 
-x.id === id); if (o) o.status = 'shipped'; 
-save(); render(); toast('Marked as shipped'); },
-  delivered(id) { const o = S.orders.find(x =>
-x.id === id); if (o) { o.status = 
-'delivered'; o.delivered = true; o.paid = 
-true; } save(); render(); toast('Marked as delivered'); },
+  ship(id) { const o = S.orders.find(x => x.id === id); if (o) o.status = 'shipped'; save(); render(); toast('Marked as shipped'); },
+  delivered(id) { const o = S.orders.find(x => x.id === id); if (o) { o.status = 'delivered'; o.delivered = true; o.paid = true; } save(); render(); toast('Marked as delivered'); },
   confirm(id) {
-    const o = S.orders.find(x => x.id === 
-id);
-    if (o) { o.status = 'delivered'; 
-o.delivered = true; }
-    save(); render(); toast(o && o.paid ? 
-  'Delivery confirmed. The seller has been paid.' : 'Delivery confirmed');
+    const o = S.orders.find(x => x.id === id);
+    if (o) { o.status = 'delivered'; o.delivered = true; }
+    save(); render(); toast(o && o.paid ? 'Delivery confirmed. The seller has been paid.' : 'Delivery confirmed');
   },
   rate(id) {
     const [oid, pid] = id.split('|');
-    V.rv = {oid, pid, rating: 0, text: ''}; 
-openSheet('review');
+    V.rv = {oid, pid, rating: 0, text: ''}; openSheet('review');
   },
-  star(id) { V.rv.rating = +id; V.err = ''; 
-render(); },
-  tab(id) { V.tab = id; V.confirmDel = 
-null; render(); },
+  star(id) { V.rv.rating = +id; V.err = ''; render(); },
+  tab(id) { V.tab = id; V.confirmDel = null; render(); },
   del(id) { V.confirmDel = id; render(); },
-  delno() { V.confirmDel = null; render(); 
-},
+  delno() { V.confirmDel = null; render(); },
   delyes(id) {
-    S.products = S.products.filter(p => 
-p.id !== id);
-    S.cart = S.cart.filter(c => c.id !== 
-id);
+    S.products = S.products.filter(p => p.id !== id);
+    S.cart = S.cart.filter(c => c.id !== id);
     S.wish = S.wish.filter(w => w !== id);
-    delete S.chats[id]; delete 
-S.unreadS[id]; delete S.unreadC[id]; delete 
-S.deals[id];
-    V.confirmDel = null; save(); render(); 
-toast('Product deleted');
- },
-  restock(id) { const p = byId(id); if (p) 
-p.stock = (p.stock || 0) + 5; save(); 
-render(); toast('Stock updated'); }
+    delete S.chats[id]; delete S.unreadS[id]; delete S.unreadC[id]; delete S.deals[id];
+    V.confirmDel = null; save(); render(); toast('Product deleted');
+  },
+  restock(id) { const p = byId(id); if (p) p.stock = (p.stock || 0) + 5; save(); render(); toast('Stock updated'); }
 };
+
 function addProduct(f) {
-  const name = 
-f.elements.name.value.trim();
-  const num = v => 
-parseFloat(String(v).replace(/,/g, ''));
-  const price = 
-num(f.elements.price.value);
-  const saleRaw = 
-f.elements.sale.value.trim(), sale = 
-saleRaw ? num(saleRaw) : 0;
-  const stockRaw = 
-f.elements.stock.value.trim(), stock = 
-parseInt(stockRaw, 10);
+  const name = f.elements.name.value.trim();
+  const num = v => parseFloat(String(v).replace(/,/g, ''));
+  const price = num(f.elements.price.value);
+  const saleRaw = f.elements.sale.value.trim(), sale = saleRaw ? num(saleRaw) : 0;
+  const stockRaw = f.elements.stock.value.trim(), stock = parseInt(stockRaw, 10);
   const err = $('#perr');
   if (!name) { err.textContent = 'Enter a product name.'; return; }
-  if (!(price > 0)) { err.textContent = 
-'Enter a price greater than 0.'; return; }
-  if (saleRaw && !(sale > 0 && sale < price)) { err.textContent = 'The deal price must be lower than the regular price.'; 
-return; }
-  if (!(stock >= 0)) { err.textContent = 
-'Enter how many you have in stock.'; 
-return; }
+  if (!(price > 0)) { err.textContent = 'Enter a price greater than 0.'; return; }
+  if (saleRaw && !(sale > 0 && sale < price)) { err.textContent = 'The deal price must be lower than the regular price.'; return; }
+  if (!(stock >= 0)) { err.textContent = 'Enter how many you have in stock.'; return; }
   const cat = f.elements.cat.value;
   S.products.unshift({
-    id: 'p' + uid(), name, price: 
-Math.round(price * 100) / 100, cat, emoji: 
-CAT[cat].e,
+    id: 'p' + uid(), name, price: Math.round(price * 100) / 100, cat, emoji: CAT[cat].e,
     desc: f.elements.desc.value.trim(),
-    warranty: 
-f.elements.warranty.value.trim() || D_WARR,
-    delivery: 
-f.elements.delivery.value.trim() || D_DEL,
-    img: V.newImg, stock, sale: saleRaw ? 
-Math.round(sale * 100) / 100 : 0
+    warranty: f.elements.warranty.value.trim() || D_WARR,
+    delivery: f.elements.delivery.value.trim() || D_DEL,
+    img: V.newImg, stock, sale: saleRaw ? Math.round(sale * 100) / 100 : 0
   });
-  V.newImg = null; save(); render(); 
-toast('Product added');
+  V.newImg = null; save(); render(); toast('Product added');
 }
 function sendChat(f) {
-  const text = 
-f.elements.text.value.trim();
+  const text = f.elements.text.value.trim();
   if (!text || !V.chat) return;
   pushMsg(V.chat.pid, V.chat.as, text);
   save(); render();
   const i = $('#cm'); if (i) i.focus();
 }
 function sendOffer() {
-  const p = byId(V.offerPid); if (!p) 
-return;
-  const b = baseOf(p), a = 
-  parseFloat(String($('#of').value).replace(/,/g, ''));
-  const pending = (S.chats[p.id] || 
-[]).some(m => m.offer && m.offer.status === 
-'pending');
-  if (pending) { V.err = 'You already have an offer waiting for the seller.'; 
-render(); return; }
+  const p = byId(V.offerPid); if (!p) return;
+  const b = baseOf(p), a = parseFloat(String($('#of').value).replace(/,/g, ''));
+  const pending = (S.chats[p.id] || []).some(m => m.offer && m.offer.status === 'pending');
+  if (pending) { V.err = 'You already have an offer waiting for the seller.'; render(); return; }
   if (!(a > 0)) { V.err = 'Enter the amount you want to offer.'; render(); return; }
   if (a >= b) { V.err = `Your offer must be lower than the asking price of ${money(b)}. You can just buy it.`; render(); return; }
   if (a < b * 0.5) { V.err = `That is too low. Offers start at ${money(Math.ceil(b * 0.5))}.`; render(); return; }
   const amt = Math.round(a * 100) / 100;
   pushMsg(p.id, 'customer', `Offer: ${money(amt)}`, {offer: {amount: amt, status: 'pending'}});
-  V.err = ''; save(); openChat(p.id, 
-'customer'); toast('Offer sent');
+  V.err = ''; save(); openChat(p.id, 'customer'); toast('Offer sent');
 }
 function submitReview() {
   const r = V.rv; if (!r) return;
   if (!r.rating) { V.err = 'Tap a star to rate.'; render(); return; }
-  const o = S.orders.find(x => x.id === 
-r.oid), item = o && o.items.find(i => i.id 
-=== r.pid);
-  const parts = (o ? o.customer.name : 
-'Customer').trim().split(/\s+/);
-  const name = parts[0] + (parts[1] ? ' ' + 
-parts[1][0].toUpperCase() + '.' : '');
-  S.reviews.push({pid: r.pid, rating: 
-r.rating, text: r.text.trim(), name, t: 
-Date.now()});
+  const o = S.orders.find(x => x.id === r.oid), item = o && o.items.find(i => i.id === r.pid);
+  const parts = (o ? o.customer.name : 'Customer').trim().split(/\s+/);
+  const name = parts[0] + (parts[1] ? ' ' + parts[1][0].toUpperCase() + '.' : '');
+  S.reviews.push({pid: r.pid, rating: r.rating, text: r.text.trim(), name, t: Date.now()});
   if (item) item.reviewed = true;
-  V.rv = null; V.sheet = null; V.err = ''; 
-save(); render(); toast('Review posted');
+  V.rv = null; V.sheet = null; V.err = ''; save(); render(); toast('Review posted');
+}
+
+function submitAuth() {
+  const a = V.auth, phone = a.phone.trim().replace(/\s/g, '');
+  if (!/^0\d{9}$/.test(phone)) { V.authErr = 'Enter a 10-digit phone number starting with 0, like 0244123456.'; render(); return; }
+  if (a.mode === 'signup') {
+    if (!a.name.trim()) { V.authErr = 'Enter your full name.'; render(); return; }
+    if (S.accounts.some(x => x.phone === phone)) { V.authErr = 'An account with this number already exists. Sign in instead.'; render(); return; }
+    if (a.password.length < 4) { V.authErr = 'Password must be at least 4 characters.'; render(); return; }
+    if (a.password !== a.confirm) { V.authErr = 'Passwords do not match.'; render(); return; }
+    const acc = {id: 'u' + uid(), name: a.name.trim(), phone, password: a.password};
+    S.accounts.push(acc); S.userId = acc.id;
+  } else {
+    const acc = S.accounts.find(x => x.phone === phone);
+    if (!acc || acc.password !== a.password) { V.authErr = 'Phone number or password is incorrect.'; render(); return; }
+    S.userId = acc.id;
+  }
+  const name = accName().split(' ')[0], wasSignup = a.mode === 'signup';
+  V.auth = {mode: 'signin', name: '', phone: '', password: '', confirm: ''}; V.authErr = '';
+  save(); render(); window.scrollTo(0, 0);
+  toast(`Welcome${wasSignup ? '' : ' back'}, ${name}!`);
 }
 function validate() {
-  const c = V.co, num = s => 
-s.replace(/\s/g, '');
+  const c = V.co, num = s => s.replace(/\s/g, '');
   if (!c.name.trim()) return 'Enter your full name.';
   if (!/^0\d{9}$/.test(num(c.phone))) return 'Enter a 10-digit phone number starting with 0, like 0244123456.';
   if (!c.addr.trim()) return 'Enter your delivery area and a landmark.';
-  if (c.method === 'momo' && 
-!/^0\d{9}$/.test(num(c.momo))) return 'Enter the 10-digit MoMo number to charge.';
+  if (c.method === 'momo' && !/^0\d{9}$/.test(num(c.momo))) return 'Enter the 10-digit MoMo number to charge.';
   if (c.method === 'card') {
     if (!/^\d{16}$/.test(num(c.card))) return 'Card number must be 16 digits.';
     if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(c.exp.trim())) return 'Enter the expiry as MM/YY.';
-    if (!/^\d{3}$/.test(c.cvv.trim())) 
-return 'CVV is 3 digits.';
+    if (!/^\d{3}$/.test(c.cvv.trim())) return 'CVV is 3 digits.';
   }
   return '';
 }
 async function pay() {
   if (V.busy) return;
   const items = checkoutItems();
-  if (!items.length) { V.sheet = null; 
-render(); return; }
+  if (!items.length) { V.sheet = null; render(); return; }
   const c = V.co, msg = validate();
-  if (msg) { V.err = msg; render(); return; 
-}
-  const short = items.find(x => x.p.stock 
-!== undefined && x.qty > x.p.stock);
-  if (short) { V.err = `Only 
-${short.p.stock} of ${short.p.name} left. 
-Update your cart.`; render(); return; }
+  if (msg) { V.err = msg; render(); return; }
+  const short = items.find(x => x.p.stock !== undefined && x.qty > x.p.stock);
+  if (short) { V.err = `Only ${short.p.stock} of ${short.p.name} left. Update your cart.`; render(); return; }
   V.err = ''; V.busy = true;
-  V.step = c.method === 'momo' ? `Approve the payment prompt on ${c.momo.trim()}…` :
-    c.method === 'card' ? 'Confirming with your bank…' : 'Placing your order…';
+  V.step = c.method === 'momo' ? `Approve the payment prompt on ${c.momo.trim()}…` : c.method === 'card' ? 'Confirming with your bank…' : 'Placing your order…';
   render();
-  await sleep(c.method === 'momo' ? 2200 : 
-1300);
-  const sub = sumItems(items), fee = 
-feeFor(c.region, sub);
+  await sleep(c.method === 'momo' ? 2200 : 1300);
+  const sub = sumItems(items), fee = feeFor(c.region, sub);
   const order = {
-    id: 'MH-' + uid().slice(0, 
-6).toUpperCase(), t: Date.now(),
-    items: items.map(({p, qty}) => ({id: 
-p.id, name: p.name, price: baseOf(p), 
-qty})),
-    subtotal: sub, fee, total: sub + fee, 
-region: c.region,
-    method: c.method === 'momo' ? `MoMo 
-(${c.net})` : c.method === 'card' ? 'Card' 
-: 'Cash on delivery',
-    paid: c.method !== 'cod', delivered: 
-false, status: 'placed',
-    customer: {name: c.name.trim(), phone: 
-c.phone.trim(), addr: c.addr.trim()}
+    id: 'MH-' + uid().slice(0, 6).toUpperCase(), t: Date.now(),
+    items: items.map(({p, qty}) => ({id: p.id, name: p.name, price: baseOf(p), qty})),
+    subtotal: sub, fee, total: sub + fee, region: c.region,
+    method: c.method === 'momo' ? `MoMo (${c.net})` : c.method === 'card' ? 'Card' : 'Cash on delivery',
+    paid: c.method !== 'cod', delivered: false, status: 'placed',
+    customer: {name: c.name.trim(), phone: c.phone.trim(), addr: c.addr.trim()}
   };
-  items.forEach(({p, qty}) => { if (p.stock 
-!== undefined) p.stock = Math.max(0, 
-p.stock - qty); delete S.deals[p.id]; });
+  items.forEach(({p, qty}) => { if (p.stock !== undefined) p.stock = Math.max(0, p.stock - qty); delete S.deals[p.id]; });
   S.orders.push(order);
   if (!V.buy) S.cart = [];
-  V.last = order; V.busy = false; V.buy = 
-null;
-  V.co = Object.assign(blankCo(), {name: 
-c.name, phone: c.phone, addr: c.addr, 
-region: c.region});
+  V.last = order; V.busy = false; V.buy = null;
+  V.co = Object.assign(blankCo(), {name: c.name, phone: c.phone, addr: c.addr, region: c.region});
   save(); V.sheet = 'success'; render();
-  const s = $('.sheet'); if (s) 
-s.focus({preventScroll: true});
+  const s = $('.sheet'); if (s) s.focus({preventScroll: true});
 }
+
 function fileToDataUrl(file, max = 640) {
   return new Promise((res, rej) => {
     const fr = new FileReader();
@@ -1181,27 +767,21 @@ function fileToDataUrl(file, max = 640) {
       const im = new Image();
       im.onerror = rej;
       im.onload = () => {
-        const k = Math.min(1, max / 
-Math.max(im.width, im.height));
-        const cv = 
-document.createElement('canvas');
-        cv.width = Math.round(im.width * 
-k); cv.height = Math.round(im.height * k);
-        cv.getContext('2d').drawImage(im, 
-0, 0, cv.width, cv.height);
-        res(cv.toDataURL('image/jpeg', 
-0.82));
+        const k = Math.min(1, max / Math.max(im.width, im.height));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        res(cv.toDataURL('image/jpeg', 0.82));
       };
       im.src = fr.result;
     };
     fr.readAsDataURL(file);
   });
 }
-  /* ---------- events ---------- */
+
+/* ---------- events ---------- */
 document.addEventListener('click', e => {
-  if (e.target.classList && 
-e.target.classList.contains('backdrop')) { 
-ACTIONS.closeSheet(); return; }
+  if (e.target.classList && e.target.classList.contains('backdrop')) { ACTIONS.closeSheet(); return; }
   const el = e.target.closest('[data-action]');
   if (!el) return;
   const fn = ACTIONS[el.dataset.action];
@@ -1209,29 +789,20 @@ ACTIONS.closeSheet(); return; }
 });
 document.addEventListener('input', e => {
   const t = e.target;
-  if (t.id === 'q') { V.q = t.value; 
-updateGrid(); return; }
-  if (t.dataset && t.dataset.bind) 
-V.co[t.dataset.bind] = t.value;
-  if (t.dataset && t.dataset.rv && V.rv) 
-V.rv[t.dataset.rv] = t.value;
+  if (t.id === 'q') { V.q = t.value; updateGrid(); return; }
+  if (t.dataset && t.dataset.bind) V.co[t.dataset.bind] = t.value;
+  if (t.dataset && t.dataset.rv && V.rv) V.rv[t.dataset.rv] = t.value;
+  if (t.dataset && t.dataset.auth) V.auth[t.dataset.auth] = t.value;
 });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.id === 'sort') { V.sort = t.value; 
-updateGrid(); return; }
-  if (t.dataset && t.dataset.bind) { 
-V.co[t.dataset.bind] = t.value; if 
-(t.dataset.bind === 'region') render(); }
-  if (t.id === 'pi' && t.files && 
-t.files[0]) {
+  if (t.id === 'sort') { V.sort = t.value; updateGrid(); return; }
+  if (t.dataset && t.dataset.bind) { V.co[t.dataset.bind] = t.value; if (t.dataset.bind === 'region') render(); }
+  if (t.id === 'pi' && t.files && t.files[0]) {
     fileToDataUrl(t.files[0]).then(u => {
       V.newImg = u; const pv = $('#prev');
-      if (pv) pv.innerHTML = `<img 
-src="${u}" alt="Selected product image">`;
-    }).catch(() => { const er = $('#perr');
-      if (er) er.textContent = 'That image could not be read. Try a JPG or PNG.';
-    });
+      if (pv) pv.innerHTML = `<img src="${u}" alt="Selected product image">`;
+    }).catch(() => { const er = $('#perr'); if (er) er.textContent = 'That image could not be read. Try a JPG or PNG.'; });
   }
 });
 document.addEventListener('submit', e => {
@@ -1242,10 +813,12 @@ document.addEventListener('submit', e => {
   else if (k === 'checkout') pay();
   else if (k === 'offer') sendOffer();
   else if (k === 'review') submitReview();
+  else if (k === 'auth') submitAuth();
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { if (V.chat) 
-ACTIONS.closechat(); else if (V.sheet) 
-ACTIONS.closeSheet(); }
+  if (e.key === 'Escape') { if (V.chat) ACTIONS.closechat(); else if (V.sheet) ACTIONS.closeSheet(); }
 });
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__deferredPrompt = e; render(); });
+window.addEventListener('appinstalled', () => { window.__deferredPrompt = null; V.installDismissed = true; render(); });
+
 render();
