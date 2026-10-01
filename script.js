@@ -141,7 +141,7 @@ function header() {
   const cnt = S.cart.reduce((a, c) => a + c.qty, 0);
   const isC = S.role === 'customer';
   return `<header class="top"><div class="bar">
-    <button class="brand" data-action="home" aria-label="MarketHub home">${LOGO}<span>MarketHub</span></button>
+    <button class="brand" data-action="home" aria-label="MarketPlace home">${LOGO}<span>MarketPlace</span></button>
     <div class="actions">
       ${S.role ? `<div class="seg" role="group" aria-label="Switch between shopping and selling">
         <button data-action="role" data-id="customer" aria-pressed="${isC}">Shop</button>
@@ -154,7 +154,7 @@ function header() {
 function authView() {
   const a = V.auth, isUp = a.mode === 'signup';
   return `<main class="gate">
-    <h1>${isUp ? 'Create your account' : 'Welcome to MarketHub'}</h1>
+    <h1>${isUp ? 'Create your account' : 'Welcome to MarketPlace'}</h1>
     <p class="sub">${isUp ? 'Sign up to shop or sell across Ghana.' : 'Sign in to shop or sell across Ghana.'}</p>
     <div class="chips" style="margin:18px 0 2px">
       <button class="chip" data-action="authmode" data-id="signin" aria-pressed="${!isUp}">Sign in</button>
@@ -172,7 +172,7 @@ function authView() {
 }
 function gate() {
   return `<main class="gate">
-    <h1>How do you want to use MarketHub?</h1>
+    <h1>How do you want to use MarketPlace?</h1>
     <p class="sub">Buy and sell across Ghana. You can switch any time.</p>
     <div class="choices">
       <button class="choice buy" data-action="role" data-id="customer"><strong>Customer</strong><span>Shop phones, fashion, home items and more</span></button>
@@ -241,7 +241,7 @@ function home() {
 function shareLink(p) {
   let url = '';
   try { url = location.href; } catch (e) {}
-  const text = `${p.name} for ${money(baseOf(p))} on MarketHub ${url}`.trim();
+  const text = `${p.name} for ${money(baseOf(p))} on MarketPlace ${url}`.trim();
   return 'https://wa.me/?text=' + encodeURIComponent(text);
 }
 function detail() {
@@ -260,7 +260,7 @@ function detail() {
       <dl class="facts">
         <div><dt>Warranty</dt><dd>${esc(p.warranty || D_WARR)}</dd></div>
         <div><dt>Delivery</dt><dd>${esc(p.delivery || D_DEL)}. Free in Greater Accra on orders over ${money(FREE_ACCRA)}.</dd></div>
-        <div><dt>Protection</dt><dd>Pay by MoMo or card and MarketHub holds your money until you confirm delivery.</dd></div>
+        <div><dt>Protection</dt><dd>Pay by MoMo or card and MarketPlace holds your money until you confirm delivery.</dd></div>
         <div><dt>Sold by</dt><dd>${SELLER}<span class="ver">Verified</span></dd></div>
       </dl>
       <div class="stack">
@@ -521,7 +521,7 @@ function chatView() {
 /* ---------- render ---------- */
 function installBanner() {
   if (V.installDismissed || isStandalone()) return '';
-  return `<div class="instbar"><span>Install MarketHub for a full, app-like experience</span>
+  return `<div class="instbar"><span>Install MarketPlace for a full, app-like experience</span>
     <div class="instbtns"><button class="btn sm primary" data-action="install">Install</button>
     <button class="x" data-action="dismissInstall" aria-label="Dismiss">✕</button></div></div>`;
 }
